@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Model Usage Tracker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .updated-date {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        @media (min-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+        }
+        .model-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .model-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .model-name {
+            font-weight: bold;
+        }
+        .model-usage {
+            color: #2980b9;
+            font-weight: bold;
+        }
+        .trend {
+            font-size: 0.9em;
+            padding-left: 5px;
+        }
+        .up {
+            color: #27ae60;
+        }
+        .down {
+            color: #e74c3c;
+        }
+        .neutral {
+            color: #95a5a6;
+        }
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        .methodology {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AI Model Usage Tracker</h1>
+        <p class="updated-date" id="last-updated">Loading...</p>
+    </header>
+
+    <div class="dashboard">
+        <div class="card">
+            <h2>Top AI Models by Usage</h2>
+            <div class="chart-container" id="usage-chart">
+                <div class="loading">Loading chart data...</div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Weekly Growth Trends</h2>
+            <div class="chart-container" id="growth-chart">
+                <div class="loading">Loading chart data...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Detailed Model Rankings</h2>
+        <ul class="model-list" id="model-rankings">
+            <div class="loading">Loading rankings...</div>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>Industry-Specific Usage</h2>
+        <div class="chart-container" id="industry-chart">
+            <div class="loading">Loading chart data...</div>
+        </div>
+    </div>
+
+    <div class="methodology card">
+        <h3>Methodology</h3>
+        <p>This tracker collects data from multiple sources including API usage statistics, developer surveys, and public GitHub repositories. The percentages represent estimated market share based on these combined metrics. Weekly updates are published every Wednesday.</p>
+    </div>
+
+    <footer>
+        <p>© 2025 AI Model Usage Tracker | <a href="#">About</a> | <a href="#">Data Sources</a> | <a href="#">Contact</a></p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <script>
+        // Fetch data from the JSON file
+        async function fetchData() {
+            try {
+                const response = await fetch('data.json');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.querySelectorAll('.loading').forEach(el => {
+                    el.textContent = 'Error loading data. Please try again later.';
+                    el.style.color = '#e74c3c';
+                });
+            }
+        }
+
+        // Update the page with the fetched data
+        async function updateDashboard() {
+            const data = await fetchData();
+            if (!data) return;
+
+            // Update last updated date
+            document.getElementById('last-updated').textContent = `Last updated: ${data.lastUpdated}`;
+
+            // Create model rankings list
+            const rankingsList = document.getElementById('model-rankings');
+            rankingsList.innerHTML = '';
+            
+            data.models.forEach(model => {
+                const li = document.createElement('li');
+                li.className = 'model-item';
+                
+                const trendClass = model.trendDirection === 'up' ? 'up' : 
+                                  model.trendDirection === 'down' ? 'down' : 'neutral';
+                const trendSymbol = model.trendDirection === 'up' ? '▲' : 
+                                   model.trendDirection === 'down' ? '▼' : '►';
+                
+                li.innerHTML = `
+                    <span class="model-name">${model.name}</span>
+                    <span class="model-usage">${model.usage}% 
+                        <span class="trend ${trendClass}">${trendSymbol} ${Math.abs(model.trend)}%</span>
+                    </span>
+                `;
+                rankingsList.appendChild(li);
+            });
+
+            // Usage Chart
+            const usageCtx = document.getElementById('usage-chart').getContext('2d');
+            document.querySelector('#usage-chart .loading').style.display = 'none';
+            
+            new Chart(usageCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.models.map(model => model.name),
+                    datasets: [{
+                        label: 'Market Share %',
+                        data: data.models.map(model => model.usage),
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(153, 102, 255, 0.7)',
+                            'rgba(255, 159, 64, 0.7)',
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(255, 205, 86, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(75, 192, 192)',
+                            'rgb(54, 162, 235)',
+                            'rgb(153, 102, 255)',
+                            'rgb(255, 159, 64)',
+                            'rgb(255, 99, 132)',
+                            'rgb(255, 205, 86)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: Math.ceil(Math.max(...data.models.map(model => model.usage)) * 1.1)
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Growth Chart
+            const growthCtx = document.getElementById('growth-chart').getContext('2d');
+            document.querySelector('#growth-chart .loading').style.display = 'none';
+            
+            // Find the top 3 models for the growth chart
+            const topModels = [...data.models].sort((a, b) => b.usage - a.usage).slice(0, 3);
+            const topModelNames = topModels.map(model => model.name);
+            
+            const datasets = topModelNames.map((modelName, index) => {
+                const colors = ['rgba(75, 192, 192, 1)', 'rgba(54, 162, 235, 1)', 'rgba(153, 102, 255, 1)'];
+                return {
+                    label: modelName,
+                    data: data.weeklyData.map(week => week[modelName]),
+                    borderColor: colors[index],
+                    tension: 0.4,
+                    fill: false
+                };
+            });
+            
+            new Chart(growthCtx, {
+                type: 'line',
+                data: {
+                    labels: data.weeklyData.map(week => week.week),
+                    datasets: datasets
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: Math.floor(Math.min(...datasets.flatMap(ds => ds.data)) * 0.9),
+                            max: Math.ceil(Math.max(...datasets.flatMap(ds => ds.data)) * 1.1),
+                            title: {
+                                display: true,
+                                text: 'Market Share %'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Industry Chart
+            if (data.industryData) {
+                const industryCtx = document.getElementById('industry-chart').getContext('2d');
+                document.querySelector('#industry-chart .loading').style.display = 'none';
+                
+                new Chart(industryCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: Object.keys(data.industryData[0]).filter(key => key !== 'model'),
+                        datasets: data.industryData.map((item, index) => {
+                            const colors = ['rgba(75, 192, 192, 1)', 'rgba(54, 162, 235, 1)'];
+                            const bgColors = ['rgba(75, 192, 192, 0.2)', 'rgba(54, 162, 235, 0.2)'];
+                            return {
+                                label: item.model,
+                                data: Object.entries(item)
+                                    .filter(([key]) => key !== 'model')
+                                    .map(([_, value]) => value),
+                                fill: true,
+                                backgroundColor: bgColors[index],
+                                borderColor: colors[index],
+                                pointBackgroundColor: colors[index],
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: colors[index]
+                            };
+                        })
+                    },
+                    options: {
+                        elements: {
+                            line: {
+                                borderWidth: 3
+                            }
+                        },
+                        scales: {
+                            r: {
+                                angleLines: {
+                                    display: true
+                                },
+                                suggestedMin: 30,
+                                suggestedMax: 100
+                            }
+                        }
+                    }
+                });
+            } else {
+                document.querySelector('#industry-chart .loading').textContent = 'Industry data not available';
+            }
+        }
+
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', updateDashboard);
+    </script>
+</body>
+</html>
